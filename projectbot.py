@@ -1,4 +1,4 @@
-import json,re,time,datetime
+import re,time,datetime
 import config,markup
 from classes import Groups,FSMBan
 from aiogram import Bot, types
@@ -19,7 +19,7 @@ async def start_bot(message : types.Message):
 	if group.delete:
 		await message.delete()
 		return
-	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага")
+	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага\n/stop - остановить работу функции")
 	del group
 
 @dp.message_handler(commands=['bet'],state=None)
@@ -47,6 +47,10 @@ async def ban_word(message : types.Message, state: FSMContext):
 	group=Groups(message.chat.id)
 	group.vote_for=group.vote_against=0
 	group.involved_users.clear()
+	if message.text=='/stop' or message.text=='/stop@'+dict(await bot.get_me())['username']:
+		await bot.send_message(message.chat.id,"Команда отменена")
+		await state.finish()
+		return
 	if message.text and message.text.lower() not in group.swearings and not any((bad not in set('ієїqwertyuiopasdfghjklzxcvbnmёйцукенгшщзхъфывапролджэячсмитьбю')) for bad in message.text.lower()):
 		await bot.send_message(message.chat.id,message.text+"\nДобавляем в нелегальщину?",reply_markup=markup.vote)
 		await state.finish()
@@ -70,6 +74,10 @@ async def ban_person(message : types.Message, state: FSMContext):
 	group=Groups(message.chat.id)
 	group.vote_for=group.vote_against=0
 	group.involved_users.clear()
+	if message.text=='/stop' or message.text=='/stop@'+dict(await bot.get_me())['username']:
+		await bot.send_message(message.chat.id,"Команда отменена")
+		await state.finish()
+		return
 	if message.reply_to_message and message.reply_to_message.from_user.id!=message.from_user.id and message.reply_to_message.from_user.id!=dict(await bot.get_me())['id'] and not message.reply_to_message.from_user.is_bot and all(admin.user.id != message.reply_to_message.from_user.id for admin in await bot.get_chat_administrators(message.chat.id)):
 		group.involved_users.append(message.reply_to_message.from_user.id)
 		await bot.send_message(message.chat.id,message.reply_to_message.from_user.mention+"\nОтправляем этого человека отдохнуть на 5 минут?",reply_markup=markup.vote)
@@ -83,9 +91,15 @@ async def ban_person(message : types.Message, state: FSMContext):
 async def check_swearings(message : types.Message):
 	group=Groups(message.chat.id)
 	if group.delete:
-		await message.delete()
+		if (message.text=='/stop' or message.text=='/stop@'+dict(await bot.get_me())['username']) and message.from_user.id in group.involved_users:
+			group.delete=False
+			group.involved_users.clear()
+			group.game.clear()
+			await bot.send_message(message.chat.id,"Игра преждевременно окончена")
+		else:
+			await message.delete()
 		return
-	if message.text and any((word in re.split(r'[ ,!_?.	\n-]+',message.text.lower())) for word in group.swearings):
+	if message.text and any((word in re.split(r'[ ,!/_?.	\n-]+',message.text.lower())) for word in group.swearings):
 		await message.reply(message.from_user.full_name+" ,тобой было произнесено то,что нельзя было говорить")
 		await message.delete()
 	del group
@@ -128,7 +142,7 @@ async def enter_game(call: CallbackQuery):
 	group.involved_users.append(call.from_user.id)
 	if(len(group.involved_users)==1):
 		await call.message.edit_text(call.from_user.mention+"-ждёт своего соперника",reply_markup=markup.bet_start)
-	if(len(group.involved_users)==2):
+	elif(len(group.involved_users)==2):
 		await call.message.edit_text("Игра началась!",reply_markup=None)
 		time.sleep(3)
 		group.delete=True
