@@ -13,17 +13,28 @@ from aiogram.types.callback_query import CallbackQuery
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
+def check_bot_start(chat,members,info):
+	chat_type=(not chat.type!='group' and not chat.type!='supergroup')
+	not_full_admin=(info['status']!='member' and (not info['can_delete_messages'] or not info['can_restrict_members'] or not info['can_manage_chat']))
+	if chat_type or members<3 or info['status']=='member' or not_full_admin:
+		return False
+	return True
+
 @dp.message_handler(commands=['start','help'])
 async def start_bot(message : types.Message):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		return
 	group=Groups(message.chat.id)
 	if group.delete:
 		await message.delete()
 		return
-	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага\n/stop - остановить работу функции")
+	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"""!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага\n/stop - остановить работу функции""")
 	del group
 
 @dp.message_handler(commands=['bet'],state=None)
 async def open_game(message: types.Message):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		return
 	group=Groups(message.chat.id)
 	if group.delete:
 		await message.delete()
@@ -34,6 +45,8 @@ async def open_game(message: types.Message):
 
 @dp.message_handler(commands=['ban_word'],state=None)
 async def open_banning_word(message: types.Message):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		return
 	group=Groups(message.chat.id)
 	if group.delete:
 		await message.delete()
@@ -61,6 +74,8 @@ async def ban_word(message : types.Message, state: FSMContext):
 
 @dp.message_handler(commands=['ban_person'],state=None)
 async def open_banning_person(message: types.Message):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		return
 	group=Groups(message.chat.id)
 	if group.delete:
 		await message.delete()
@@ -78,7 +93,7 @@ async def ban_person(message : types.Message, state: FSMContext):
 		await bot.send_message(message.chat.id,"Команда отменена")
 		await state.finish()
 		return
-	if message.reply_to_message and message.reply_to_message.from_user.id!=message.from_user.id and message.reply_to_message.from_user.id!=dict(await bot.get_me())['id'] and not message.reply_to_message.from_user.is_bot and all(admin.user.id != message.reply_to_message.from_user.id for admin in await bot.get_chat_administrators(message.chat.id)):
+	if message.reply_to_message and message.reply_to_message.from_user.id!=message.from_user.id and message.reply_to_message.from_user.id!=dict(await bot.get_me())['id'] and all(admin.user.id != message.reply_to_message.from_user.id for admin in await bot.get_chat_administrators(message.chat.id)):
 		group.involved_users.append(message.reply_to_message.from_user.id)
 		await bot.send_message(message.chat.id,message.reply_to_message.from_user.mention+"\nОтправляем этого человека отдохнуть на 5 минут?",reply_markup=markup.vote)
 		await state.finish()
@@ -89,6 +104,8 @@ async def ban_person(message : types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text','document','audio','photo','sticker','video','voice','unknown'])
 async def check_swearings(message : types.Message):
+	if not check_bot_start(message.chat, await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		return
 	group=Groups(message.chat.id)
 	if group.delete:
 		if (message.text=='/stop' or message.text=='/stop@'+dict(await bot.get_me())['username']) and message.from_user.id in group.involved_users:
@@ -167,8 +184,7 @@ async def choose_weapon(call: CallbackQuery):
 			group.delete=False
 		group.game.clear()
 	del group
-#проверить админку бота и тип чата(некоторые ф-ции стоит запретить) 
-#проверка на количество людей в группе(минимум 3) и добавить команду стоп
+#подумать про добавление проверки не в команды
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
