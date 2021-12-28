@@ -57,6 +57,9 @@ async def open_banning_word(message: types.Message):
 
 @dp.message_handler(content_types=['text','document','audio','photo','sticker','video','voice','unknown'],state=FSMBan.ban_word)
 async def ban_word(message : types.Message, state: FSMContext):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		await state.finish()
+		return
 	group=Groups(message.chat.id)
 	group.vote_for=group.vote_against=0
 	group.involved_users.clear()
@@ -86,6 +89,9 @@ async def open_banning_person(message: types.Message):
 
 @dp.message_handler(content_types=['text','document','audio','photo','sticker','video','voice','unknown'],state=FSMBan.ban_member)
 async def ban_person(message : types.Message, state: FSMContext):
+	if not check_bot_start(message.chat,await message.chat.get_member_count(),dict(await message.chat.get_member(dict(await bot.get_me())['id']))):
+		await state.finish()
+		return
 	group=Groups(message.chat.id)
 	group.vote_for=group.vote_against=0
 	group.involved_users.clear()
@@ -124,7 +130,7 @@ async def check_swearings(message : types.Message):
 @dp.callback_query_handler(text="pros")
 async def vote_for_ban(call: CallbackQuery):
 	group=Groups(call.message.chat.id)
-	if group.delete or call.from_user.id in group.involved_users:
+	if not check_bot_start(call.message.chat,await call.message.chat.get_member_count(),dict(await call.message.chat.get_member(dict(await bot.get_me())['id']))) or group.delete or call.from_user.id in group.involved_users:
 		return
 	group.vote_for+=1
 	group.involved_users.append(call.from_user.id)
@@ -141,7 +147,7 @@ async def vote_for_ban(call: CallbackQuery):
 @dp.callback_query_handler(text="cons")
 async def vote_against_ban(call: CallbackQuery):
 	group=Groups(call.message.chat.id)
-	if group.delete or call.from_user.id in group.involved_users:
+	if not check_bot_start(call.message.chat,await call.message.chat.get_member_count(),dict(await call.message.chat.get_member(dict(await bot.get_me())['id']))) or group.delete or call.from_user.id in group.involved_users:
 		return
 	group.vote_against+=1
 	group.involved_users.append(call.from_user.id)
@@ -154,7 +160,7 @@ async def vote_against_ban(call: CallbackQuery):
 @dp.callback_query_handler(text="try")
 async def enter_game(call: CallbackQuery):
 	group=Groups(call.message.chat.id)
-	if group.delete or call.from_user.id in group.involved_users:
+	if not check_bot_start(call.message.chat,await call.message.chat.get_member_count(),dict(await call.message.chat.get_member(dict(await bot.get_me())['id']))) or group.delete or call.from_user.id in group.involved_users:
 		return
 	group.involved_users.append(call.from_user.id)
 	if(len(group.involved_users)==1):
@@ -171,6 +177,11 @@ async def enter_game(call: CallbackQuery):
 @dp.callback_query_handler(text=['Ножницы','Камень','Бумага'])
 async def choose_weapon(call: CallbackQuery):
 	group=Groups(call.message.chat.id)
+	if not check_bot_start(call.message.chat,await call.message.chat.get_member_count(),dict(await call.message.chat.get_member(dict(await bot.get_me())['id']))):
+		group.delete=False
+		group.game.clear()
+		del group
+		return
 	if str(call.from_user.id) not in group.game and call.from_user.id in group.involved_users:
 		group.game[str(call.from_user.id)]=call.data
 	if len(group.game)==2:
@@ -184,7 +195,6 @@ async def choose_weapon(call: CallbackQuery):
 			group.delete=False
 		group.game.clear()
 	del group
-#подумать про добавление проверки не в команды
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
