@@ -1,9 +1,10 @@
 import json
 from aiogram.dispatcher.filters.state import State,StatesGroup
 
-class FSMBan(StatesGroup):
+class FSMFunc(StatesGroup):
 	ban_word=State()
 	ban_member=State()
+	search_book=State()
 
 class Groups:
 	def __init__(self,chat_id):
@@ -13,11 +14,13 @@ class Groups:
 			chat_info[str(chat_id)]={}
 			chat_info[str(chat_id)]['delete']=False
 			chat_info[str(chat_id)]['game']={}
+			chat_info[str(chat_id)]['search_list']=[]
 			chat_info[str(chat_id)]['main'] = [0,0,[],[]]
 		with open('groups.json', 'w') as open_json:
 			json.dump(chat_info,open_json, indent=4)
 		self.delete=chat_info[str(chat_id)]['delete']
 		self.game=chat_info[str(chat_id)]['game']
+		self.search_list=chat_info[str(chat_id)]['search_list']
 		self.vote_for = chat_info[str(chat_id)]['main'][0]
 		self.vote_against = chat_info[str(chat_id)]['main'][1]
 		self.swearings=chat_info[str(chat_id)]['main'][2]
@@ -29,6 +32,7 @@ class Groups:
 			chat_info=json.load(open_json)
 		chat_info[str(self.chat_id)]['delete']=self.delete
 		chat_info[str(self.chat_id)]['game']=self.game
+		chat_info[str(self.chat_id)]['search_list']=self.search_list
 		chat_info[str(self.chat_id)]['main'][0]=self.vote_for
 		chat_info[str(self.chat_id)]['main'][1]=self.vote_against
 		chat_info[str(self.chat_id)]['main'][2]=self.swearings
@@ -55,6 +59,16 @@ class Groups:
 		if not isinstance(game,dict):
 			raise TypeError
 		self.__game = game
+
+	@property
+	def search_list(self):
+		return self.__search_list
+
+	@search_list.setter
+	def search_list(self,search_list):
+		if not isinstance(search_list,list):
+			raise TypeError
+		self.__search_list = search_list
 
 	@property
 	def vote_for(self):
