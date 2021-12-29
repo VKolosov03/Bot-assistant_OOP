@@ -14,6 +14,8 @@ class Groups:
 			chat_info[str(chat_id)]['delete']=False
 			chat_info[str(chat_id)]['game']={}
 			chat_info[str(chat_id)]['main'] = [0,0,[],[]]
+		with open('groups.json', 'w') as open_json:
+			json.dump(chat_info,open_json, indent=4)
 		self.delete=chat_info[str(chat_id)]['delete']
 		self.game=chat_info[str(chat_id)]['game']
 		self.vote_for = chat_info[str(chat_id)]['main'][0]
