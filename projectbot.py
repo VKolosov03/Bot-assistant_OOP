@@ -1,6 +1,6 @@
 import re,time,datetime
 import config,markup
-from classes import Groups,FSMFunc
+from classes import Groups,FSMFunc,Parser
 from aiogram import Bot, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher
@@ -9,6 +9,7 @@ from aiogram.utils import executor
 from aiogram.dispatcher.filters.state import State,StatesGroup
 from aiogram.dispatcher import FSMContext
 from aiogram.types.callback_query import CallbackQuery
+from aiogram.utils.markdown import hlink
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -28,7 +29,7 @@ async def start_bot(message : types.Message):
 	if group.delete:
 		await message.delete()
 		return
-	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"""!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага\n/stop - остановить работу функции""")
+	await bot.send_message(message.chat.id,"Приветствую, "+message.from_user.mention+"""!\nЯ Грагас - бот-помощник для чата!\nМои команды:\n/help - описание как я работаю\n/ban_person - заблокировать человека на 5 минут\n/ban_word - запертить слово в чате\n/bet - сыграть в камень-ножницы-бумага\n/stop - остановить работу функции\n/parser - поиск информации на сайте""")
 
 @dp.message_handler(commands=['bet'],state=None)
 async def open_game(message: types.Message):
@@ -67,8 +68,8 @@ async def search_book(message : types.Message, state: FSMContext):
 		await state.finish()
 		return
 	if message.text:
-		group.search_list=[['1','A'],['2','B'],['3','O'],['4','B'],['5','A']]
-		await bot.send_message(message.chat.id,"Список книг по запросу:",reply_markup=markup.create_trends(group.search_list))
+		group.search_list=Parser().parse_steam(message.text)
+		await bot.send_message(message.chat.id,"Список игр по запросу:",reply_markup=markup.create_trends(group.search_list))
 		await state.finish()
 		del group
 		return 
@@ -236,17 +237,20 @@ async def use_parser(call: CallbackQuery):
 		await call.message.edit_text("Напишите ваш запрос!",reply_markup=None)
 		return
 	elif call.data=='info':
-		group.search_list=[['1','A'],['2','B'],['3','O'],['4','B'],['5','A']]
-		await call.message.edit_text("Список игровых статей:",reply_markup=markup.create_trends(group.search_list))
+		group.search_list=Parser().parse_gaming()
+		await call.message.edit_text("Список последних игровых статей:",reply_markup=markup.create_trends(group.search_list))
 	else:
-		group.search_list=[['1','A'],['2','B'],['3','O'],['4','B'],['5','A']]
-		await call.message.edit_text("Список чемпионов:",reply_markup=markup.create_trends(group.search_list))
+		group.search_list=Parser().parse_league()
+		await call.message.edit_text("Список лучших чемпионов:",reply_markup=markup.create_trends(group.search_list))
 	del group
 
 @dp.callback_query_handler(text=['0','1','2','3','4'])
 async def show_list(call: CallbackQuery):
 	group=Groups(call.message.chat.id)
-	await bot.answer_callback_query(call.id,text=group.search_list[int(call.data)][1], show_alert=True)
+	if len(group.search_list)==0:
+		return
+	await bot.answer_callback_query(call.id,text='Ссылка: '+group.search_list[int(call.data)][1], show_alert=True)
+	#await bot.answer_callback_query(call.id,url=hlink('link',group.search_list[int(call.data)][1]), show_alert=True)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)

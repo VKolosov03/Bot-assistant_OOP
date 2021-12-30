@@ -7,7 +7,7 @@ cons=types.InlineKeyboardButton(text="👎",callback_data="cons")
 vote.add(pros,cons)
 
 parser=InlineKeyboardMarkup(row_width=1)
-search=types.InlineKeyboardButton(text="Искать книгу по запросу",callback_data="search")
+search=types.InlineKeyboardButton(text="Искать игру по запросу",callback_data="search")
 info=types.InlineKeyboardButton(text="Смотреть список игр",callback_data="info")
 champs=types.InlineKeyboardButton(text="Смотреть список чемпионов лиги легенд",callback_data="champs")
 parser.add(search,info,champs)
